@@ -3,6 +3,12 @@
 ## 📍 Google Drive記録パス
 **保存先**: `G:\マイドライブ\AI_Memory`
 
+## 🐙 GitHub Repository
+**リポジトリURL**: https://github.com/amijadoamijado/rf001-gas-report-formatter-pro
+**リリースURL**: https://github.com/amijadoamijado/rf001-gas-report-formatter-pro/releases/tag/v1.0.0
+**記録日時**: 2025-06-18
+**バージョン**: v1.0.0
+
 ## 🎯 プロジェクト完了記録
 
 ### プロジェクト情報
