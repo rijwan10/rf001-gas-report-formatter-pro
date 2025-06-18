@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReportFormatter Pro - Professional Report Generator</title>
+    <?!= include('styles'); ?>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">ReportFormatter <span class="pro">Pro</span></h1>
+            <p class="tagline">McKinsey/BCG品質のプロフェッショナルレポート自動生成</p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            
+            <section class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <h2>ファイルをアップロード</h2>
+                    <p>Word文書、PDF、テキストファイルをドラッグ&ドロップまたはクリックして選択</p>
+                    <input type="file" id="fileInput" accept=".doc,.docx,.pdf,.txt" multiple style="display: none;">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        ファイルを選択
+                    </button>
+                </div>
+                
+                <div class="uploaded-files" id="uploadedFiles" style="display: none;">
+                    <h3>アップロード済みファイル</h3>
+                    <div class="file-list" id="fileList"></div>
+                </div>
+            </section>
+
+            <section class="settings-section" id="settingsSection" style="display: none;">
+                <h2>レポート設定</h2>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="formatType">レポート形式</label>
+                        <select id="formatType" class="select-input">
+                            <option value="professional">Professional (McKinsey Style)</option>
+                            <option value="executive">Executive Summary</option>
+                            <option value="consulting">Consulting (BCG Style)</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="outputName">出力ファイル名</label>
+                        <input type="text" id="outputName" class="text-input" placeholder="Professional_Report">
+                    </div>
+                </div>
+            </section>
+
+            <section class="convert-section" id="convertSection" style="display: none;">
+                <button class="convert-btn" id="convertBtn" onclick="startConversion()">
+                    <span class="btn-icon">🚀</span>
+                    プロフェッショナルレポートを生成
+                </button>
+            </section>
+
+            <section class="progress-section" id="progressSection" style="display: none;">
+                <div class="progress-container">
+                    <h3>変換進行中...</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-steps" id="progressSteps">
+                        <div class="step">ファイル解析中...</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="result-section" id="resultSection" style="display: none;">
+                <div class="result-container">
+                    <div class="success-icon">✅</div>
+                    <h2>変換完了！</h2>
+                    <p>プロフェッショナルレポートが正常に生成されました。</p>
+                    
+                    <div class="result-actions">
+                        <button class="download-btn" id="downloadBtn">
+                            <span class="btn-icon">📥</span>
+                            PDFをダウンロード
+                        </button>
+                        <button class="preview-btn" id="previewBtn">
+                            <span class="btn-icon">👁️</span>
+                            プレビュー
+                        </button>
+                    </div>
+                    
+                    <div class="result-info" id="resultInfo">
+                    </div>
+                </div>
+            </section>
+
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-container">
+                    <div class="error-icon">❌</div>
+                    <h2>エラーが発生しました</h2>
+                    <p id="errorMessage">処理中にエラーが発生しました。</p>
+                    <button class="retry-btn" onclick="resetForm()">
+                        もう一度試す
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 ReportFormatter Pro - Professional Report Generation System</p>
+            <p>Powered by Google Apps Script | McKinsey/BCG Quality Standards</p>
+        </div>
+    </footer>
+
+    <?!= include('scripts'); ?>
+</body>
+</html>

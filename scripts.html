@@ -1,0 +1,489 @@
+<script>
+let uploadedFiles = [];
+let currentConversionId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+    setupEventListeners();
+});
+
+function initializeApp() {
+    console.log('ReportFormatter Pro - Initializing...');
+    setupDragAndDrop();
+    setupFileInput();
+    console.log('ReportFormatter Pro - Ready!');
+}
+
+function setupEventListeners() {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+}
+
+function setupDragAndDrop() {
+    const uploadArea = document.getElementById('uploadArea');
+    if (!uploadArea) return;
+    
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFiles(files);
+        }
+    });
+    
+    uploadArea.addEventListener('click', function() {
+        document.getElementById('fileInput').click();
+    });
+}
+
+function setupFileInput() {
+    const fileInput = document.getElementById('fileInput');
+    if (!fileInput) return;
+    
+    fileInput.addEventListener('change', handleFileSelect);
+}
+
+function handleFileSelect(event) {
+    const files = event.target.files;
+    if (files.length > 0) {
+        handleFiles(files);
+    }
+}
+
+async function handleFiles(files) {
+    showLoadingState('ファイルをアップロード中...');
+    
+    try {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            if (!isValidFileType(file)) {
+                showError(`サポートされていないファイル形式: ${file.name}`);
+                continue;
+            }
+            
+            if (!isValidFileSize(file)) {
+                showError(`ファイルサイズが大きすぎます: ${file.name} (最大10MB)`);
+                continue;
+            }
+            
+            const uploadResult = await uploadFile(file);
+            if (uploadResult.success) {
+                uploadedFiles.push({
+                    file: file,
+                    uploadResult: uploadResult.data,
+                    uploadTime: new Date()
+                });
+            } else {
+                showError(`アップロードに失敗しました: ${file.name} - ${uploadResult.message}`);
+            }
+        }
+        
+        if (uploadedFiles.length > 0) {
+            updateFileList();
+            showSettingsSection();
+            hideLoadingState();
+        } else {
+            hideLoadingState();
+            showError('有効なファイルがアップロードされませんでした。');
+        }
+        
+    } catch (error) {
+        hideLoadingState();
+        showError('ファイル処理中にエラーが発生しました: ' + error.message);
+    }
+}
+
+function isValidFileType(file) {
+    const validTypes = [
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/pdf',
+        'text/plain',
+        'text/csv'
+    ];
+    
+    const validExtensions = ['.doc', '.docx', '.pdf', '.txt', '.csv'];
+    
+    return validTypes.includes(file.type) || 
+           validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+}
+
+function isValidFileSize(file) {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    return file.size <= maxSize;
+}
+
+async function uploadFile(file) {
+    return new Promise((resolve) => {
+        const formData = new FormData();
+        formData.append('action', 'upload');
+        formData.append('file', file);
+        formData.append('fileName', file.name);
+        
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler((error) => {
+                resolve({ success: false, message: error.toString() });
+            })
+            .handleFileUpload(formData);
+    });
+}
+
+function updateFileList() {
+    const fileList = document.getElementById('fileList');
+    const uploadedFilesSection = document.getElementById('uploadedFiles');
+    
+    if (!fileList || !uploadedFilesSection) return;
+    
+    fileList.innerHTML = '';
+    
+    uploadedFiles.forEach((fileData, index) => {
+        const fileItem = createFileListItem(fileData, index);
+        fileList.appendChild(fileItem);
+    });
+    
+    uploadedFilesSection.style.display = 'block';
+    uploadedFilesSection.classList.add('fade-in');
+}
+
+function createFileListItem(fileData, index) {
+    const item = document.createElement('div');
+    item.className = 'file-item slide-in';
+    
+    const icon = getFileIcon(fileData.file.type, fileData.file.name);
+    const size = formatFileSize(fileData.file.size);
+    const uploadTime = formatTime(fileData.uploadTime);
+    
+    item.innerHTML = `
+        <div class="file-icon">${icon}</div>
+        <div class="file-info">
+            <h4>${fileData.file.name}</h4>
+            <p>サイズ: ${size} | アップロード: ${uploadTime}</p>
+        </div>
+        <button class="remove-btn" onclick="removeFile(${index})" title="削除">
+            ❌
+        </button>
+    `;
+    
+    return item;
+}
+
+function getFileIcon(mimeType, fileName) {
+    if (mimeType.includes('word') || fileName.toLowerCase().includes('.doc')) {
+        return '📄';
+    } else if (mimeType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf')) {
+        return '📕';
+    } else if (mimeType.includes('text') || fileName.toLowerCase().endsWith('.txt')) {
+        return '📝';
+    } else if (fileName.toLowerCase().endsWith('.csv')) {
+        return '📊';
+    } else {
+        return '📋';
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function formatTime(date) {
+    return date.toLocaleString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function removeFile(index) {
+    if (confirm('このファイルを削除しますか？')) {
+        uploadedFiles.splice(index, 1);
+        updateFileList();
+        
+        if (uploadedFiles.length === 0) {
+            document.getElementById('uploadedFiles').style.display = 'none';
+            hideSettingsSection();
+        }
+    }
+}
+
+function showSettingsSection() {
+    const settingsSection = document.getElementById('settingsSection');
+    const convertSection = document.getElementById('convertSection');
+    
+    if (settingsSection) {
+        settingsSection.style.display = 'block';
+        settingsSection.classList.add('fade-in');
+    }
+    
+    if (convertSection) {
+        convertSection.style.display = 'block';
+        convertSection.classList.add('fade-in');
+    }
+}
+
+function hideSettingsSection() {
+    const settingsSection = document.getElementById('settingsSection');
+    const convertSection = document.getElementById('convertSection');
+    
+    if (settingsSection) {
+        settingsSection.style.display = 'none';
+    }
+    
+    if (convertSection) {
+        convertSection.style.display = 'none';
+    }
+}
+
+async function startConversion() {
+    if (uploadedFiles.length === 0) {
+        showError('変換するファイルがありません。');
+        return;
+    }
+    
+    const formatType = document.getElementById('formatType').value;
+    const outputName = document.getElementById('outputName').value || 'Professional_Report';
+    
+    try {
+        showProgressSection();
+        hideOtherSections();
+        
+        const progressSteps = [
+            '文書を解析中...',
+            'プロフェッショナルレイアウトを適用中...',
+            'PDFを生成中...',
+            '最終品質チェック中...',
+            '完了！'
+        ];
+        
+        for (let i = 0; i < uploadedFiles.length; i++) {
+            const fileData = uploadedFiles[i];
+            
+            updateProgress(((i + 1) / uploadedFiles.length) * 100, progressSteps);
+            
+            const conversionResult = await convertFile(fileData.uploadResult.fileId, formatType, outputName);
+            
+            if (conversionResult.success) {
+                showConversionResult(conversionResult.data);
+            } else {
+                throw new Error(conversionResult.message);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Conversion error:', error);
+        hideProgressSection();
+        showError('変換中にエラーが発生しました: ' + error.message);
+    }
+}
+
+async function convertFile(fileId, formatType, outputName) {
+    return new Promise((resolve) => {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler((error) => {
+                resolve({ success: false, message: error.toString() });
+            })
+            .handleConversion({
+                fileId: fileId,
+                formatType: formatType,
+                outputName: outputName
+            });
+    });
+}
+
+function showProgressSection() {
+    const progressSection = document.getElementById('progressSection');
+    if (progressSection) {
+        progressSection.style.display = 'block';
+        progressSection.classList.add('fade-in');
+    }
+}
+
+function hideProgressSection() {
+    const progressSection = document.getElementById('progressSection');
+    if (progressSection) {
+        progressSection.style.display = 'none';
+    }
+}
+
+function hideOtherSections() {
+    const sections = ['uploadSection', 'settingsSection', 'convertSection', 'resultSection', 'errorSection'];
+    sections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            section.style.display = 'none';
+        }
+    });
+}
+
+function updateProgress(percentage, steps) {
+    const progressFill = document.getElementById('progressFill');
+    const progressSteps = document.getElementById('progressSteps');
+    
+    if (progressFill) {
+        progressFill.style.width = percentage + '%';
+    }
+    
+    if (progressSteps && steps) {
+        const currentStep = Math.floor((percentage / 100) * steps.length);
+        const stepHtml = steps.map((step, index) => {
+            const className = index <= currentStep ? 'step active' : 'step';
+            return `<div class="${className}">${step}</div>`;
+        }).join('');
+        progressSteps.innerHTML = stepHtml;
+    }
+}
+
+function showConversionResult(resultData) {
+    hideProgressSection();
+    
+    const resultSection = document.getElementById('resultSection');
+    const resultInfo = document.getElementById('resultInfo');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    
+    if (resultSection) {
+        resultSection.style.display = 'block';
+        resultSection.classList.add('fade-in');
+    }
+    
+    if (resultInfo) {
+        resultInfo.innerHTML = `
+            <div class="info-item">
+                <span class="info-label">変換済みファイル名:</span>
+                <span class="info-value">${resultData.fileName || 'Professional_Report.pdf'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">ファイルサイズ:</span>
+                <span class="info-value">${formatFileSize(resultData.size || 0)}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">変換完了時刻:</span>
+                <span class="info-value">${new Date(resultData.createdTime || Date.now()).toLocaleString('ja-JP')}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">品質レベル:</span>
+                <span class="info-value">McKinsey/BCG Professional <span class="professional-badge">Premium</span></span>
+            </div>
+        `;
+    }
+    
+    if (downloadBtn && resultData.downloadUrl) {
+        downloadBtn.onclick = () => {
+            window.open(resultData.downloadUrl, '_blank');
+        };
+    }
+    
+    if (previewBtn && resultData.sourceDocUrl) {
+        previewBtn.onclick = () => {
+            window.open(resultData.sourceDocUrl, '_blank');
+        };
+    }
+}
+
+function showError(message) {
+    const errorSection = document.getElementById('errorSection');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    if (errorSection) {
+        errorSection.style.display = 'block';
+        errorSection.classList.add('fade-in');
+    }
+    
+    if (errorMessage) {
+        errorMessage.textContent = message;
+    }
+    
+    hideOtherSections();
+}
+
+function showLoadingState(message) {
+    const uploadArea = document.getElementById('uploadArea');
+    if (uploadArea) {
+        uploadArea.innerHTML = `
+            <div class="loading"></div>
+            <h2>${message}</h2>
+            <p>しばらくお待ちください...</p>
+        `;
+    }
+}
+
+function hideLoadingState() {
+    const uploadArea = document.getElementById('uploadArea');
+    if (uploadArea) {
+        uploadArea.innerHTML = `
+            <div class="upload-icon">📄</div>
+            <h2>ファイルをアップロード</h2>
+            <p>Word文書、PDF、テキストファイルをドラッグ&ドロップまたはクリックして選択</p>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                ファイルを選択
+            </button>
+        `;
+    }
+}
+
+function resetForm() {
+    uploadedFiles = [];
+    currentConversionId = null;
+    
+    const sections = ['settingsSection', 'convertSection', 'progressSection', 'resultSection', 'errorSection', 'uploadedFiles'];
+    sections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            section.style.display = 'none';
+        }
+    });
+    
+    const uploadSection = document.getElementById('uploadSection');
+    if (uploadSection) {
+        uploadSection.style.display = 'block';
+    }
+    
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    const outputName = document.getElementById('outputName');
+    if (outputName) {
+        outputName.value = '';
+    }
+    
+    hideLoadingState();
+}
+
+setTimeout(() => {
+    google.script.run
+        .withSuccessHandler((result) => {
+            console.log('GAS Connection OK:', result);
+        })
+        .withFailureHandler((error) => {
+            console.error('GAS Connection Error:', error);
+            showError('サーバーとの接続に問題があります。ページを再読み込みしてください。');
+        })
+        .initializeProject();
+}, 1000);
+
+console.log('RF001-GAS ReportFormatter Pro - Client-side ready!');
+</script>

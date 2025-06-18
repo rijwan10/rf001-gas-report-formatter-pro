@@ -1,0 +1,5 @@
+# Ignore these files during clasp push
+README.md
+MANUAL_DEPLOYMENT_GUIDE.md
+auto-deploy.sh
+.claspignore
